@@ -29,7 +29,7 @@ def sender_login(sender_mail_server='gmail.com'):
         print('Login error ...')
     return account, sender
 
-def lab_score_mail_loader(mail_template):
+def mail_template_loader(mail_template):
     Subject, From, Content = '', '', ''
     with open(mail_template, 'r') as f:
         # format: student id, student name, score, receiver mail server
@@ -46,7 +46,7 @@ def announce_lab_scores(sheet, mail):
         # format: student id, student name, score, receiver mail server
         receiver_list = [re.sub(' ', '', line).split(',') for line in f.readlines()]
         f.close()
-    Subject, From, Content = lab_score_mail_loader(mail)
+    Subject, From, Content = mail_template_loader(mail)
     account, sender = sender_login()
     if not sender:
         return
