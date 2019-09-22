@@ -27,40 +27,36 @@ def sender_login(sender_mail_server='gmail.com'):
     except smtplib.SMTPException:
         sender = None
         print('Login error ...')
-
     return account, sender
 
-def announce_lab_scores(sheet):
+def lab_score_mail_loader(mail_template):
+    Subject, From, Content = '', '', ''
+    with open(mail_template, 'r') as f:
+        # format: student id, student name, score, receiver mail server
+        content = f.read()
+        Subject = re.search('Subject *= *(.*)', content).group(1)
+        From =  re.search('From *= *(.*)', content).group(1)
+        Content = '\n'.join(content.splitlines()[4:])
+        f.close()
+    return Subject, From, Content
+    
+def announce_lab_scores(sheet, mail):
     receiver_list = []
     with open(sheet, 'r') as f:
-        # format: student id, student name, score
+        # format: student id, student name, score, receiver mail server
         receiver_list = [re.sub(' ', '', line).split(',') for line in f.readlines()]
         f.close()
-    
-    Who = 'Li-Cheng Zheng'
-    Subject = '[TEST] score of {}'.format('Lab. 1')
-    From = ''
-    To = '{}@{}'
-    # {0}: receiver, {1}: lab name, {2}: score, {3}: sender
-    Content = '''
-    Hi {0}, 
-    
-    Your score of {1} is {2}.
-
-    Best regards,
-    {3}
-    {4}
-    '''
+    Subject, From, Content = lab_score_mail_loader(mail)
     account, sender = sender_login()
     if not sender:
         return
-    for student_id, name, score, receiver_mail_server in receiver_list:
-        print(student_id, name, score, receiver_mail_server)
-        message = MIMEText(Content.format(name, Subject, score, Who, Notice))
+    for student_id, student, score, receiver_mail_server in receiver_list[:1]:
+        message = MIMEText(Content.format(student, score, Notice))
         message['Subject'] = Subject
-        message['From'] = account
-        message['To'] = To.format(student_id, receiver_mail_server)
+        message['From'] = From if From else account
+        message['To'] = '{}@{}'.format(student_id, receiver_mail_server)
         sender.send_message(message)
+        print('Send to {} ...'.format(student))
     sender.quit()
 
 if __name__ == '__main__':
@@ -69,6 +65,8 @@ if __name__ == '__main__':
         help='mode flag is required')
     parser.add_argument("-lss", "--lab-score-sheet", dest="lab_score_sheet", required='announce_lab_scores' in sys.argv,
         help='lab_score_sheet is required if the specified mode is announce_lab_scores ...')
+    parser.add_argument("-mt", "--mail-template", dest="mail_template", required='announce_lab_scores' in sys.argv,
+        help='mail_template is required if you want to send mail to anyone ...')
     args = vars(parser.parse_args())
     if args['mode'] == 'announce_lab_scores':
-        announce_lab_scores(args['lab_score_sheet'])
+        announce_lab_scores(args['lab_score_sheet'], args['mail_template'])
