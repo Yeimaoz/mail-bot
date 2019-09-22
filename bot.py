@@ -5,14 +5,16 @@ from getpass import getpass
 import sys
 import re
 
-NOTICE = '''
-************* Introduction to Computer Science Laboratory Notice ********************
+Notice = '''
+******************** Introduction to Computer Science Laboratory Notice ********************
 This mail is sent by the mail-bot.
-It won't leak any information about your scores in this class to others.
+The bot won't leak any information about your scores in this class to others.
 The implementation of the mail-bot is avaliable on https://github.com/Yeimaoz/mail-bot.
 If you have any questions or concerns, please feel free to contact me.
 Author: Li-Cheng Zheng
-Mail:   lczheng.official@gmail.com 
+Office: E1-359
+Office hour: 
+Email: lczheng.official@gmail.com 
 '''
 
 def sender_login(sender_mail_server='gmail.com'):
@@ -20,20 +22,27 @@ def sender_login(sender_mail_server='gmail.com'):
     password = getpass('Enter your password: ')
     sender = smtplib.SMTP_SSL('smtp.'+sender_mail_server, 465)
     sender.ehlo()
-    status = sender.login(account, password)
-    return None if status[0] != 235 else sender
-    
-def sender_logout(sender):
-    sender.quit()
+    try:
+        sender.login(account, password)
+    except smtplib.SMTPException:
+        sender = None
+        print('Login error ...')
 
+    return account, sender
 
-def announce_lab_scores(sheet, receiver_mail_server='cc.ncu.edu.tw'):
+def announce_lab_scores(sheet):
     receiver_list = []
     with open(sheet, 'r') as f:
+        # format: student id, student name, score
         receiver_list = [re.sub(' ', '', line).split(',') for line in f.readlines()]
         f.close()
+    
+    Who = 'Li-Cheng Zheng'
+    Subject = '[TEST] score of {}'.format('Lab. 1')
+    From = ''
+    To = '{}@{}'
     # {0}: receiver, {1}: lab name, {2}: score, {3}: sender
-    content = '''
+    Content = '''
     Hi {0}, 
     
     Your score of {1} is {2}.
@@ -42,7 +51,17 @@ def announce_lab_scores(sheet, receiver_mail_server='cc.ncu.edu.tw'):
     {3}
     {4}
     '''
-    sender_login()
+    account, sender = sender_login()
+    if not sender:
+        return
+    for student_id, name, score, receiver_mail_server in receiver_list:
+        print(student_id, name, score, receiver_mail_server)
+        message = MIMEText(Content.format(name, Subject, score, Who, Notice))
+        message['Subject'] = Subject
+        message['From'] = account
+        message['To'] = To.format(student_id, receiver_mail_server)
+        sender.send_message(message)
+    sender.quit()
 
 if __name__ == '__main__':
     parser = ArgumentParser()
