@@ -7,6 +7,8 @@ import re
 
 Notice = '''
 ******************** Introduction to Computer Science Laboratory Notice ********************
+Please do not reply to this email. 
+This email address, ncuedalab.andy@gmail.com, is used only for sending email to you, so you will not receive a response.
 This mail is sent by the mail-bot.
 The bot won't leak any information about your scores in this class to others.
 The implementation of the mail-bot is avaliable on https://github.com/Yeimaoz/mail-bot.
@@ -39,20 +41,29 @@ def mail_template_loader(mail_template):
         Content = '\n'.join(content.splitlines()[4:])
         f.close()
     return Subject, From, Content
-    
-def announce_lab_scores(sheet, mail):
+
+def score_sheet_loader(sheet):
     receiver_list = []
     with open(sheet, 'r') as f:
         # format: student id, student name, score, receiver mail server
         receiver_list = [re.sub(' ', '', line).split(',') for line in f.readlines()]
         f.close()
+    return receiver_list
+
+def announce_lab_scores(sheet, mail):
+    lab_name = sheet.split('/')[-1][:-4].split('_')[-1]
+    receiver_list = score_sheet_loader(sheet)
     Subject, From, Content = mail_template_loader(mail)
     account, sender = sender_login()
     if not sender:
         return
-    for student_id, student, score, receiver_mail_server in receiver_list[:1]:
-        message = MIMEText(Content.format(student, score, Notice))
-        message['Subject'] = Subject
+    for student_id, student, *scores, receiver_mail_server in receiver_list:
+        parts = '{0} and {1}'.format(', '.join(scores[:-2]), scores[-2])
+        number_of_parts = [lab_name+'.'+str(i) for i in range(1, len(scores[:-1])+1)]
+        labs = '{0} and {1}'.format(', '.join(number_of_parts[:-1]), number_of_parts[-1])
+        total = scores[-1]
+        message = MIMEText(Content.format(student, parts, labs, total, lab_name, Notice))
+        message['Subject'] = Subject.format(lab_name)
         message['From'] = From if From else account
         message['To'] = '{}@{}'.format(student_id, receiver_mail_server)
         sender.send_message(message)
